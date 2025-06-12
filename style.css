@@ -1,0 +1,271 @@
+
+    /* 全体の基本スタイル */
+    body {
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      font-family: sans-serif;
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+      color: #000000;
+    }
+
+    /* 問題文のスタイル */
+    .question {
+      font-size: 1.2em;
+      margin: 20px 0;
+    }
+
+    /* 選択肢ボタンのグリッドレイアウト：初期は1列 */
+    .options {
+      display: grid;
+      grid-template-columns: repeat(1fr);
+      gap: 10px;
+    }
+
+    /* 700px以上の画面では2列表示 */
+    @media (min-width: 700px) {
+      .options {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* 検索フォーム全体の縦並び */
+    .search-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* 検索ボタンの装飾（見やすく） */
+    #searchForm {
+      max-width: 600px;
+      margin: 20px auto;
+      gap: 10px;
+    }
+
+    #searchForm input[type="text"] {
+      flex: 1;
+      padding: 10px 15px;
+      font-size: 16px;
+      border: 2px solid #000000;
+      border-radius: 8px;
+      box-sizing: border-box;
+      transition: border-color 0.3s;
+    }
+
+    #searchForm input[type="text"]:focus {
+      border-color: #eeeeee;
+      outline: none;
+    }
+
+    #searchForm button {
+      width: 100px;
+      background-color: #eeeeee;
+      border: none;
+      color: #000000;
+      font-weight: bold;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    #searchForm button:hover {
+      background-color: #dddddd;
+    }
+    .search-bottom-row button {
+      padding: 6px 16px;
+      font-size: 1em;
+    }
+    .search-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .button-container {
+      display: flex;
+      justify-content: flex-end; /* 右寄せ */
+    }
+
+    .button-container button {
+      width: 100px;
+    }
+
+    /* プルダウンメニュー */
+    .dropdown-container {
+      /* text-align: center; */
+      margin-bottom: 20px;
+    }
+
+    .styled-select {
+      font-size: 1.1rem;
+      padding: 10px 20px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      background-color: #f7f7f7;
+      box-shadow: 2px 2px 5px #0000001a;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .styled-select:hover {
+      background-color: #e9e9e9;
+    }
+
+    .styled-select:focus {
+      outline: none;
+      border-color: #696969;
+      box-shadow: 0 0 5px #5e5e5e80;
+    }
+
+    /* 全てのボタン共通のスタイル */
+    button {
+      cursor: pointer;
+      border: none;
+      background-color: #eee;
+      border-radius: 5px;
+      padding: 10px 20px;
+      font-size: 1em;
+      color: #000000;
+    }
+
+    button:hover {
+      background-color: #ddd;
+    }
+
+    /* 選択肢ボタンのテキスト中央・折返し対応 */
+    .options button {
+      width: 100%;
+      min-height: 60px;
+      font-size: 1em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      white-space: normal;
+      padding: 10px;
+    }
+    .options button:focus {
+      outline: none;
+      box-shadow: none;
+    }
+
+    /* カテゴリボタンの配置と大きさ */
+    .category {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin: 10px 0;
+    }
+
+    .category button {
+      width: 100%;
+      height: 60px;
+    }
+
+    /* ナビゲーションボタン（前の問題/戻る） */
+    .nav {
+      margin: 10px 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    /* 結果表示の基本設定 */
+    #result {
+      white-space: pre-wrap;
+    }
+
+    .result-box {
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+    }
+
+    .correct {
+      color: green;
+    }
+
+    .wrong {
+      color: red;
+    }
+
+    /* 結果概要のスタイル */
+    .summary-box {
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+
+    /* 結果画面の戻るボタン用コンテナ */
+    .back-button-container {
+      margin-top: 20px;
+      margin-bottom: 100px;
+      display: flex;
+      justify-content: center;
+    }
+
+    /* 結果の正誤によって背景色を変える */
+    .result-correct {
+      background-color: #e0ffe0;
+    }
+
+    .result-wrong {
+      background-color: #ffe0e0;
+    }
+
+    /* 結果の各項目（回答、正解、結果）ブロック */
+    .answer-block {
+      display: grid;
+      gap: 6px;
+      margin: 8px 0;
+      margin-left: 10px;
+    }
+
+    /* 各項目のラベルと値の横並び */
+    .answer-row {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 4px 10px;
+    }
+
+    .answer-label {
+      font-weight: bold;
+    }
+
+    .answer-text {
+      white-space: pre-wrap;
+    }
+
+    /* アプデ情報 */
+    .update-box {
+      background-color: #f7f7f7;
+      border: 2px solid #ff4f4f;
+      border-radius: 10px;
+      padding: 15px 20px;
+      margin: 20px 0;
+      box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .update-box h2 {
+      margin-top: 0;
+      font-size: 1.2em;
+      color: #333;
+    }
+
+    .update-box ul {
+      padding-left: 20px;
+      margin: 10px 0 0 0;
+    }
+
+    .update-box li {
+      margin-bottom: 5px;
+      line-height: 1.5;
+    }
