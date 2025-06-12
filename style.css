@@ -177,11 +177,6 @@
     }
 
     /* 問題ページ */
-    #progress {
-      margin: 10px 0 20px 0;
-      font-size: 1.2rem;
-      font-weight: 700;
-    }
     /* 結果の各項目（回答、正解、結果）ブロック */
     .answer-block {
       display: grid;
