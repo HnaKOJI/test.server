@@ -1,0 +1,355 @@
+<!DOCTYPE html>1.10
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="./style.css">
+  <title>四択クイズ</title>
+</head>
+<body>
+  <div class="container">
+    <!-- クイズのタイトル -->
+    <h1>四択クイズ</h1>
+
+    <!-- カテゴリページ全体 -->
+    <div id="categoryPage">
+      <!-- 検索フォーム（経穴・経脈名） -->
+      <form id="searchForm" action="search.html" method="get" style="margin-bottom: 20px;">
+        <h2>経穴検索</h2>
+        <div class="search-controls">
+          <input type="text" name="keyword" placeholder="経穴名 または 関連ワード" required />
+          <div class="button-container">
+            <button type="submit">検索</button>
+          </div>
+        </div>
+      </form>
+      <h2>経脈名で直接検索</h2>
+      <div class="dropdown-container">
+        <select id="meridianSelect" class="styled-select">
+          <option value="">-- 経脈を選択 --</option>
+          <option value="督脈">督脈</option>
+          <option value="任脈">任脈</option>
+          <option value="手の太陰肺経">手の太陰肺経</option>
+          <option value="手の陽明大腸経">手の陽明大腸経</option>
+          <option value="足の陽明胃経">足の陽明胃経</option>
+          <option value="足の太陰脾経">足の太陰脾経</option>
+          <option value="手の少陰心経">手の少陰心経</option>
+          <option value="手の太陽小腸経">手の太陽小腸経</option>
+          <option value="足の太陽膀胱経">足の太陽膀胱経</option>
+          <option value="足の少陰腎経">足の少陰腎経</option>
+          <option value="手の厥陰心包経">手の厥陰心包経</option>
+          <option value="手の少陽三焦経">手の少陽三焦経</option>
+          <option value="足の少陽胆経">足の少陽胆経</option>
+          <option value="足の厥陰肝経">足の厥陰肝経</option>
+          <option value="奇穴">奇穴</option>
+        </select>
+      </div>
+
+      <!-- アプデ情報 -->
+       <div class="update-box">
+        <h2>アップデート情報</h2>
+        <ul>
+          <li>2025/06/12 胃経、脾経の膝先の経穴と奇穴の問題を追加しました。</li>
+          <li>2025/06/11 経穴検索に関連ワード検索を追加しました。</li>
+          <li>2025/06/11 経脈プルダウンを実装しました。</li>
+          <li>2025/06/11 ランダム30問～60問で問題が表示されないバグを修正しました。</li>
+        </ul>
+      </div>
+
+      <!-- カテゴリボタンのコンテナ -->
+      <div class="category" id="categoryButtons"></div>
+    </div>
+
+    <!-- クイズページ（問題・選択肢・ナビ・結果） -->
+    <div id="quizPage" style="display:none">
+      <div class="question" id="question"></div>
+      <div class="options" id="options"></div>
+      <div class="nav" id="navButtons">
+        <button id="prevButton" onclick="prevQuestion()">前の問題</button>
+        <button onclick="backToCategory()">カテゴリ選択に戻る</button>
+      </div>
+      <div id="result"></div>
+    </div>
+  </div>
+
+
+<!-- スクリプト：クイズ機能とデータ読み込み -->
+<script>
+  //検索欄
+  document.getElementById("meridianSelect").addEventListener("change", function() {
+    const selected = this.value;
+    if (selected) {
+      // 経脈名はkeywordに入れてmodeはmeridian
+      const url = `search.html?mode=meridian&keyword=${encodeURIComponent(selected)}`;
+      window.location.href = url;
+    }
+  });
+
+  // カテゴリ名の一覧（表示用ラベル）
+  const categoryNames = {
+    "1": "督脈",
+    "2": "任脈",
+    "3": "手の太陰肺経",
+    "4": "手の陽明大腸経",
+    "5": "足の陽明胃経",
+    "6": "足の太陰脾経",
+    "7": "手の少陰心経",
+    "8": "手の太陽小腸経",
+    "9": "足の太陽膀胱経",
+    "10": "足の少陰腎経",
+    "11": "手の厥陰心包経",
+    "12": "手の少陽三焦経",
+    "13": "足の少陽胆経",
+    "14": "足の厥陰肝経",
+    "15": "奇穴"
+  };
+
+  // クイズ用データの初期化
+  let questions = [];      // 全問題一覧
+  let answers = {};        // 正解一覧
+  let currentIndex = 0;    // 現在の問題インデックス
+  let quizData = [];       // 出題中の問題データ
+  let userAnswers = [];    // ユーザーの回答履歴
+  let history = [];        // 戻る用の履歴
+  let currentCategory = ""; // 現在選択中のカテゴリ
+
+  // 質問・回答ファイルの読み込み
+  async function loadFiles() {
+    const qRes = await fetch("questions.json");
+    const rawQuestions = await qRes.json();
+    questions = [];
+    for (const cat in rawQuestions) {
+      for (const q of rawQuestions[cat]) {
+        questions.push({ ...q, category: cat }); // カテゴリを保持
+      }
+    }
+    const aRes = await fetch("choices.json");
+    answers = await aRes.json();
+    showCategoryButtons();
+  }
+
+  // カテゴリボタンを表示
+  function showCategoryButtons() {
+    const container = document.getElementById("categoryButtons");
+    container.innerHTML = "";
+    const buttons = [
+      { label: "全問", value: "random-all" },
+      { label: "ランダム15問", value: "random-15" },
+      { label: "ランダム30問", value: "random-30" },
+      { label: "ランダム45問", value: "random-45" },
+      { label: "ランダム60問", value: "random-60" }
+    ];
+    for (const key in categoryNames) {
+      buttons.push({ label: categoryNames[key], value: key });
+    }
+    buttons.forEach(btn => {
+      const b = document.createElement("button");
+      b.textContent = btn.label;
+      b.onclick = () => startQuiz(btn.value);
+      container.appendChild(b);
+    });
+  }
+
+  // 配列をシャッフルするユーティリティ関数
+  function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+  }
+
+ 
+  // ここは実際のカテゴリIDの配列に置き換えてください
+  const categoryIdList = ["1", "2", "3", "4", "5", "6", "7", "8", "11", "12", "15",];  
+
+  // クイズ開始処理
+  function startQuiz(category) {
+
+    //console.log("startQuiz category:", category);
+
+    currentCategory = category;
+    document.getElementById("categoryPage").style.display = "none";
+    document.getElementById("quizPage").style.display = "block";
+    quizData = [];
+    userAnswers = [];
+    currentIndex = 0;
+    history = [];
+
+    let filtered = [];
+
+    if (category === "random-all") {
+      // 全問ランダム
+      filtered = questions.slice();
+      shuffle(filtered);
+    } else if (category.startsWith("random-")) {
+      // ランダム指定問題数
+      const count = parseInt(category.split("-")[1]);
+      filtered = questions.slice();
+      shuffle(filtered);
+      filtered = filtered.slice(0, count);
+    } else if (categoryIdList.includes(category)) {
+      // カテゴリID別（通常の経脈選択）
+      filtered = questions.filter(q => q.category === category);
+      shuffle(filtered);
+    } else {
+      // その他の文字列カテゴリ（将来拡張用）
+      filtered = questions.filter(q => q.category === category);
+      shuffle(filtered);
+    }
+
+    // 以下、選択肢作成の処理は変えずに
+    for (let q of filtered) {
+      let correctList = answers[q.category][q.id];
+      if (!Array.isArray(correctList)) correctList = [correctList];
+      const correct = correctList[0];
+      let wrong = [];
+
+      if (categoryIdList.includes(category)) {
+        // 同カテゴリの回答から不正解を集める
+        const categoryAnswers = answers[category];
+        wrong = Object.entries(categoryAnswers)
+          .filter(([id]) => id !== q.id)
+          .map(([id, ans]) => Array.isArray(ans) ? ans[0] : ans);
+      } else {
+        // 全カテゴリから不正解を集める
+        for (const cat in answers) {
+          for (const id in answers[cat]) {
+            if (id !== q.id) {
+              const ans = answers[cat][id];
+              wrong.push(Array.isArray(ans) ? ans[0] : ans);
+            }
+          }
+        }
+      }
+
+      shuffle(wrong);
+      const options = [correct, ...wrong.slice(0, 3)];
+      shuffle(options);
+      quizData.push({ ...q, options, correct: correctList });
+    }
+
+    document.getElementById("result").innerText = "";
+    showQuestion();
+  }
+
+  // 問題と選択肢を表示
+  function showQuestion() {
+
+    // 1. 問題表示時にアクティブ要素のフォーカス解除
+    if (document.activeElement) {
+      document.activeElement.blur();
+    }
+
+    const q = quizData[currentIndex];
+    document.getElementById("question").style.display = "block";
+    document.getElementById("options").style.display = "grid";
+    document.getElementById("question").innerText = `${currentIndex + 1}. ${q.text}`;
+
+    const optionsDiv = document.getElementById("options");
+    optionsDiv.innerHTML = "";
+
+    for (let opt of q.options) {
+      const btn = document.createElement("button");
+      btn.textContent = opt;
+      btn.onclick = () => answer(opt);
+      optionsDiv.appendChild(btn);
+    }
+
+    document.getElementById("navButtons").style.display = "flex";
+    document.getElementById("prevButton").style.display = currentIndex === 0 ? "none" : "inline-block";
+  }
+
+  // 選択肢をクリックした時の処理
+  function answer(choice) {
+    userAnswers[currentIndex] = choice;
+    history.push(currentIndex);
+    if (currentIndex < quizData.length - 1) {
+      currentIndex++;
+      showQuestion();
+    } else {
+      finishQuiz();
+    }
+  }
+
+  // 「前の問題」ボタンの処理
+  function prevQuestion() {
+    if (currentIndex > 0) {
+      currentIndex--;
+      showQuestion();
+    }
+  }
+
+  // 「カテゴリ選択に戻る」ボタンの処理
+  function backToCategory() {
+    // 1. データリセット
+    currentIndex = 0;
+    quizData = [];
+    userAnswers = [];
+    history = [];
+    currentCategory = "";
+
+    // 2. 画面切替
+    document.getElementById("quizPage").style.display = "none";
+    document.getElementById("categoryPage").style.display = "block";
+  }
+
+  // クイズ終了時に結果を表示
+  function finishQuiz() {
+    let correctCount = 0;
+    const resultDiv = document.getElementById("result");
+    resultDiv.innerHTML = "";
+    const summary = document.createElement("div");
+    summary.className = "summary-box";
+
+    quizData.forEach((q, i) => {
+      const correctList = Array.isArray(q.correct) ? q.correct : [q.correct];
+      const isCorrect = correctList.includes(userAnswers[i]);
+      if (isCorrect) correctCount++;
+
+      const box = document.createElement("div");
+      box.className = `result-box ${isCorrect ? "result-correct" : "result-wrong"}`;
+      const resultText = isCorrect ? "正解" : "不正解";
+      const resultColor = isCorrect ? "correct" : "wrong";
+      const correctText = correctList.join("<br>");
+
+      box.innerHTML = `<strong>${i + 1}. ${q.text}</strong><br>
+        <div class="answer-block">
+          <div class="answer-row">
+            <div class="answer-label">あなたの答え:</div>
+            <div class="answer-text">${userAnswers[i]}</div>
+          </div>
+          <div class="answer-row">
+            <div class="answer-label">正解:</div>
+            <div class="answer-text">${correctText}</div>
+          </div>
+          <div class="answer-row">
+            <div class="answer-label">結果:</div>
+            <div class="answer-text"><span class="${resultColor}">${resultText}</span></div>
+          </div>
+        </div>`;
+
+      resultDiv.appendChild(box);
+    });
+
+    const percent = correctCount / quizData.length;
+    summary.innerHTML = `<strong>点数: ${correctCount}/${quizData.length}</strong><br>結果: ${percent >= 0.6 ? "合格" : "ざんねん"}`;
+    resultDiv.prepend(summary);
+
+    document.getElementById("question").style.display = "none";
+    document.getElementById("options").style.display = "none";
+    document.getElementById("navButtons").style.display = "none";
+
+    const backContainer = document.createElement("div");
+    backContainer.className = "back-button-container";
+    const backBtn = document.createElement("button");
+    backBtn.textContent = "カテゴリ選択に戻る";
+    backBtn.onclick = backToCategory;
+    backContainer.appendChild(backBtn);
+    resultDiv.appendChild(backContainer);
+  }
+
+  // 初期化処理：データ読み込み実行
+  loadFiles();
+</script>
+</body>
+</html>
