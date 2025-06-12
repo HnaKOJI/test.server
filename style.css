@@ -4,10 +4,15 @@
       margin: 0;
       padding: 0;
     }
+    h1,h2,h3,h4,h5,h6 {
+      margin: 0;
+      padding: 0;
+    }
     .container {
       font-family: sans-serif;
       max-width: 600px;
       margin: auto;
+      margin-bottom: 100px;
       padding: 20px;
       color: #000000;
     }
@@ -43,6 +48,7 @@
     #searchForm {
       max-width: 600px;
       margin: 20px auto;
+      margin-bottom: 0;
       gap: 10px;
     }
 
@@ -84,6 +90,7 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
+      margin-top: 10px;
     }
 
     .button-container {
@@ -97,8 +104,10 @@
 
     /* プルダウンメニュー */
     .dropdown-container {
-      /* text-align: center; */
       margin-bottom: 20px;
+    }
+    .dropdown-container h2 {
+      margin-bottom: 10px;
     }
 
     .styled-select {
@@ -167,6 +176,32 @@
       height: 60px;
     }
 
+    /* 問題ページ */
+    #progress {
+      margin: 10px 0 20px 0;
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+    /* 結果の各項目（回答、正解、結果）ブロック */
+    .answer-block {
+      display: grid;
+      gap: 10px 0;
+    }
+    /* 各項目のラベルと値の横並び */
+    .answer-row {
+      display: grid;
+      grid-template-columns: 1fr 3fr;
+      gap: 0 10px;
+    }
+
+    .answer-label {
+      font-weight: bold;
+      width: 110px;
+    }
+
+    .answer-text {
+      white-space: pre-wrap;
+    }
     /* ナビゲーションボタン（前の問題/戻る） */
     .nav {
       margin: 10px 0;
@@ -219,29 +254,6 @@
 
     .result-wrong {
       background-color: #ffe0e0;
-    }
-
-    /* 結果の各項目（回答、正解、結果）ブロック */
-    .answer-block {
-      display: grid;
-      gap: 6px;
-      margin: 8px 0;
-      margin-left: 10px;
-    }
-
-    /* 各項目のラベルと値の横並び */
-    .answer-row {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 4px 10px;
-    }
-
-    .answer-label {
-      font-weight: bold;
-    }
-
-    .answer-text {
-      white-space: pre-wrap;
     }
 
     /* アプデ情報 */
