@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="./style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>検索結果</title>
+</head>
+<body id="search-body">
+  <div class="container">
+    <h1>検索結果</h1>
+    <div id="results">読み込み中...</div>
+
+    <script>
+      const params = new URLSearchParams(location.search);
+      const keyword = params.get("keyword");
+
+      // キーワードにマッチした部分を赤字＆下線で強調する関数
+      function highlightKeyword(text, keyword) {
+        if (!keyword) return text;
+        const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // 正規表現用にエスケープ
+        const regex = new RegExp(escapedKeyword, "gi");
+        return text.replace(regex, (match) => `<span style="color:red; text-decoration:underline;">${match}</span>`);
+      }
+
+      async function loadData() {
+        const [qRes, aRes] = await Promise.all([
+          fetch("questions.json"),
+          fetch("choices.json"),
+        ]);
+        const questionsData = await qRes.json();
+        const answersData = await aRes.json();
+
+        const categoryNames = {
+          "1": "督脈",
+          "2": "任脈",
+          "3": "手の太陰肺経",
+          "4": "手の陽明大腸経",
+          "5": "足の陽明胃経",
+          "6": "足の太陰脾経",
+          "7": "手の少陰心経",
+          "8": "手の太陽小腸経",
+          "9": "足の太陽膀胱経",
+          "10": "足の少陰腎経",
+          "11": "手の厥陰心包経",
+          "12": "手の少陽三焦経",
+          "13": "足の少陽胆経",
+          "14": "足の厥陰肝経",
+          "15": "奇穴",
+        };
+
+        const results = document.getElementById("results");
+        results.innerHTML = "";
+
+        // 経脈名の完全一致検索
+        const catEntry = Object.entries(categoryNames).find(([_, name]) => name === keyword);
+
+        if (catEntry) {
+          const [catNum] = catEntry;
+          const list = questionsData[catNum] || [];
+          const ansMap = answersData[catNum] || {};
+
+          if (list.length === 0) {
+            results.innerHTML = `<div class="result-box">「${keyword}」の経穴データが見つかりません。</div>`;
+            return;
+          }
+
+          results.innerHTML = `<h2>${keyword} の経穴一覧</h2>`;
+          for (const q of list) {
+            const ans = ansMap[q.id];
+            if (ans) {
+              let body = "";
+              if (Array.isArray(ans)) {
+                body = ans.map((item) => `・${item}`).join("<br>");
+              } else {
+                body = `・${ans}`;
+              }
+              const box = document.createElement("div");
+              box.className = "result-box";
+              box.innerHTML = `<strong>${q.id}</strong><br>${body}`;
+              results.appendChild(box);
+            }
+          }
+          return;
+        }
+
+        // 経穴IDの完全一致検索
+        let found = false;
+        for (const cat in answersData) {
+          if (answersData[cat][keyword]) {
+            const answer = Array.isArray(answersData[cat][keyword])
+              ? answersData[cat][keyword].join("<br>")
+              : answersData[cat][keyword];
+            results.innerHTML = `<div class="result-box">
+              <strong>${keyword}</strong><br>${answer}
+            </div>`;
+            found = true;
+            break;
+          }
+        }
+        if (found) return;
+
+        // 取穴部位の部分一致検索（関連語彙検索）
+        let partialResults = [];
+        for (const cat in answersData) {
+          for (const id in answersData[cat]) {
+            const ans = answersData[cat][id];
+            const text = Array.isArray(ans) ? ans.join(" ") : ans;
+            // IDまたはテキストにキーワードが含まれる場合にヒットさせる
+            if (id.includes(keyword) || text.includes(keyword)) {
+              // 強調表示付きでIDと説明文を準備
+              const highlightedId = highlightKeyword(id, keyword);
+              let highlightedText;
+              if (Array.isArray(ans)) {
+                highlightedText = ans
+                  .map((item) => `・${highlightKeyword(item, keyword)}`)
+                  .join("<br>");
+              } else {
+                highlightedText = `・${highlightKeyword(ans, keyword)}`;
+              }
+
+              partialResults.push({
+                id: highlightedId,
+                text: highlightedText,
+              });
+            }
+          }
+        }
+
+        if (partialResults.length > 0) {
+          results.innerHTML = `<h2>「${keyword}」に関連する経穴</h2>`;
+          for (const item of partialResults) {
+            const box = document.createElement("div");
+            box.className = "result-box";
+            box.innerHTML = `<strong>${item.id}</strong><br>${item.text}`;
+            results.appendChild(box);
+          }
+        } else {
+          results.innerHTML = `<div class="result-box">「${keyword}」は見つかりませんでした。</div>`;
+        }
+      }
+
+      loadData();
+    </script>
+
+    <div class="back-button-container">
+      <a href="index.html">
+        <button class="category-back-button">カテゴリ選択に戻る</button>
+      </a>
+    </div>
+  </div>
+</body>
+</html>
