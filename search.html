@@ -47,6 +47,21 @@
           "13": "足の少陽胆経",
           "14": "足の厥陰肝経",
           "15": "奇穴",
+          "16": "奇穴",
+          "17": "奇穴",
+          "18": "奇穴",
+          "19": "奇穴",
+          "20": "奇穴",
+          "21": "奇穴",
+          "22": "奇穴",
+          "23": "奇穴",
+          "24": "奇穴",
+          "25": "奇穴",
+          "26": "奇穴",
+          "27": "奇穴",
+          "28": "奇穴",
+          "29": "奇穴",
+          "30": "奇穴",
         };
 
         const results = document.getElementById("results");
@@ -75,9 +90,15 @@
               } else {
                 body = `・${ans}`;
               }
+
               const box = document.createElement("div");
-              box.className = "result-box";
-              box.innerHTML = `<strong>${q.id}</strong><br>${body}`;
+              const isHidden = q.hidden === true;
+              box.className = isHidden ? "result-box hidden-box" : "result-box";
+
+              // note が存在する場合のみ表示用HTMLを作成
+              const noteHtml = q.note ? `<div class="note-text">・${q.note}</div>` : "";
+              
+              box.innerHTML = `<strong>${q.id}${isHidden ? "（参考）" : ""}</strong><br>${body}${noteHtml}`;
               results.appendChild(box);
             }
           }

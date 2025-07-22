@@ -276,3 +276,8 @@
       margin-bottom: 5px;
       line-height: 1.5;
     }
+
+    .yoketsu-btn, .index-btn {
+      text-align: center;
+      margin-top: 30px;
+    }

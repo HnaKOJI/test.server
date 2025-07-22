@@ -1,4 +1,4 @@
-<!DOCTYPE html>v1.21
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
@@ -49,8 +49,7 @@
        <div class="update-box">
         <h2>アップデート情報</h2>
         <ul>
-          <li>2025/06/12 胃経、脾経の膝先の経穴と奇穴の問題を追加しました。</li>
-          <li>2025/06/11 経穴検索に関連ワード検索を追加しました。</li>
+          <li>2025/07/22 十二経脈の肘、膝先の経穴をすべて登録しました。</li>
         </ul>
       </div>
 
@@ -59,6 +58,7 @@
     </div>
 
     <!-- クイズページ（問題・選択肢・ナビ・結果） -->
+    <!-- <div id="youketsuLinkContainer" class="yoketsu-btn"><button onclick="location.href='yoketsu.html'">要穴問題ページ</button></div> -->
     <div id="quizPage" style="display:none">
       <div class="question" id="question"></div>
       <div class="options" id="options"></div>
@@ -69,7 +69,7 @@
       <div id="result"></div>
     </div>
   </div>
-
+  
 
 <!-- スクリプト：クイズ機能とデータ読み込み -->
 <script>
@@ -158,7 +158,7 @@
 
  
   // ここは実際のカテゴリIDの配列に置き換えてください
-  const categoryIdList = ["1", "2", "3", "4", "5", "6", "7", "8", "11", "12", "15",];  
+  const categoryIdList = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15",];  
 
   // クイズ開始処理
   function startQuiz(category) {
@@ -167,6 +167,7 @@
 
     currentCategory = category;
     document.getElementById("categoryPage").style.display = "none";
+    // document.getElementById("youketsuLinkContainer").style.display = "none";
     document.getElementById("quizPage").style.display = "block";
     quizData = [];
     userAnswers = [];
@@ -230,6 +231,7 @@
     showQuestion();
   }
 
+  
   // 問題と選択肢を表示
   function showQuestion() {
 
@@ -240,12 +242,24 @@
 
     const q = quizData[currentIndex];
 
-    // 進行状況を表示 
+    // 2. 問題文をランダムに1つ抽出（配列の場合のみ）
+    let questionText = "";
+    if (Array.isArray(q.text)) {
+      const idx = Math.floor(Math.random() * q.text.length);
+      questionText = q.text[idx];
+    } else {
+      questionText = q.text;
+    }
+
+    // 実際に使った問題文を保存（後で結果表示で使う）
+    quizData[currentIndex].usedText = questionText;
+
+    // 3. 進行状況と問題文を表示
     document.getElementById("question").style.display = "block";
     document.getElementById("options").style.display = "grid";
-    document.getElementById("question").innerHTML = `<span style="font-weight:bold; font-size:1.25rem;">${currentIndex + 1}/${quizData.length}.</span> ${q.text}`;
-    
+    document.getElementById("question").innerHTML = `<span style="font-weight:bold; font-size:1.25rem;">${currentIndex + 1}/${quizData.length}.</span> ${questionText}`;
 
+    // 4. 選択肢を表示
     const optionsDiv = document.getElementById("options");
     optionsDiv.innerHTML = "";
 
@@ -256,9 +270,11 @@
       optionsDiv.appendChild(btn);
     }
 
+    // 5. ナビゲーションボタン表示
     document.getElementById("navButtons").style.display = "flex";
     document.getElementById("prevButton").style.display = currentIndex === 0 ? "none" : "inline-block";
   }
+
 
   // 選択肢をクリックした時の処理
   function answer(choice) {
@@ -292,6 +308,7 @@
     // 2. 画面切替
     document.getElementById("quizPage").style.display = "none";
     document.getElementById("categoryPage").style.display = "block";
+    // document.getElementById("youketsuLinkContainer").style.display = "block";
   }
 
   // クイズ終了時に結果を表示
@@ -313,7 +330,8 @@
       const resultColor = isCorrect ? "correct" : "wrong";
       const correctText = correctList.join("<br>");
 
-      box.innerHTML = `<strong>${i + 1}. ${q.text}</strong><br>
+      const displayedText = q.usedText || (Array.isArray(q.text) ? q.text[0] : q.text);
+      box.innerHTML = `<strong>${i + 1}. ${displayedText}</strong><br>
         <div class="answer-block">
           <div class="answer-row">
             <div class="answer-label">結果:<span class="${resultColor}" style="padding-left:10px;">${resultText}</span></div>
