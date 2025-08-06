@@ -61,6 +61,40 @@
       answersData = await aRes.json();
     }
 
+    // note, description, choices.jsonの表示生成を関数化
+    function getNotesHtml(q, keyword) {
+      let html = "";
+      Object.keys(q)
+        .filter(k => k.startsWith("note"))
+        .sort((a, b) => (a === 'note' ? -1 : b === 'note' ? 1 : a.localeCompare(b, undefined, { numeric: true })))
+        .forEach(k => {
+          if (q[k]) html += `<div class="note-text">・${highlightKeyword(q[k], keyword)}</div>`;
+        });
+      return html;
+    }
+    function getDescHtml(q, keyword) {
+      if (q.description && q.description.trim()) {
+        return `<div class="desc-text">・${highlightKeyword(q.description, keyword)}</div>`;
+      }
+      return "";
+    }
+    function getAnsHtml(ans, keyword) {
+      if (ans) {
+        if (Array.isArray(ans)) {
+          return `・${highlightKeyword(ans[0], keyword)}`;
+        } else {
+          return `・${highlightKeyword(ans, keyword)}`;
+        }
+      }
+      return `<span style='color:gray;'>（データなし）</span>`;
+    }
+    function createResultBox(q, keyword, ans, isHidden) {
+      return `<strong>${highlightKeyword(q.id, keyword)}${isHidden ? "（参考）" : ""}</strong><br>
+        ${getNotesHtml(q, keyword)}
+        ${getDescHtml(q, keyword)}
+        ${getAnsHtml(ans, keyword)}`;
+    }
+
     async function doSearch(keyword) {
       await fetchData();
       const results = document.getElementById("results");
@@ -75,7 +109,6 @@
       let found = false;
       Object.keys(questionsData).forEach(cat => {
         questionsData[cat].forEach(q => {
-          // id, text, note, note1, ... すべてを検索対象に
           let haystacks = [q.id];
           if (Array.isArray(q.text)) {
             haystacks = haystacks.concat(q.text);
@@ -85,19 +118,22 @@
           Object.keys(q).forEach(k => {
             if (k.startsWith('note') && q[k]) haystacks.push(q[k]);
           });
+          if (q.description && q.description.trim()) {
+            haystacks.push(q.description);
+          }
           if (haystacks.some(str => str && str.includes(keyword))) {
             found = true;
-            const box = document.createElement("div");
-            box.className = "result-box";
-            // 経穴名（id）
-            let html = `<strong>${highlightKeyword(q.id, keyword)}</strong><br>`;
-            // 取穴部位（text）
-            if (Array.isArray(q.text)) {
-              html += q.text.map(t => `・${highlightKeyword(t, keyword)}`).join("<br>");
-            } else if (typeof q.text === 'string') {
-              html += `・${highlightKeyword(q.text, keyword)}`;
+            let ans = "";
+            for (const catA in answersData) {
+              if (answersData[catA][q.id]) {
+                ans = answersData[catA][q.id];
+                break;
+              }
             }
-            box.innerHTML = html;
+            const isHidden = q.hidden === true;
+            const box = document.createElement("div");
+            box.className = isHidden ? "result-box hidden-box" : "result-box";
+            box.innerHTML = createResultBox(q, keyword, ans, isHidden);
             results.appendChild(box);
           }
         });
@@ -110,57 +146,49 @@
         const [catNum] = catEntry;
         const list = questionsData[catNum] || [];
         const ansMap = answersData[catNum] || {};
-
         if (list.length === 0) {
           results.innerHTML = `<div class="result-box">「${keyword}」の経穴データが見つかりません。</div>`;
           return;
         }
-
         results.innerHTML = `<h2>${keyword} の経穴一覧</h2>`;
         for (const q of list) {
           const ans = ansMap[q.id];
-          if (ans) {
-            let body = "";
-            if (Array.isArray(ans)) {
-              body = ans.map((item) => `・${item}`).join("<br>");
-            } else {
-              body = `・${ans}`;
-            }
-
-            const box = document.createElement("div");
-            const isHidden = q.hidden === true;
-            box.className = isHidden ? "result-box hidden-box" : "result-box";
-
-            // note, note1, note2...をすべて昇順で表示（note, note1, note2...）
-            let notesHtml = "";
-            Object.keys(q)
-              .filter((k) => k.startsWith("note"))
-              .sort((a, b) => {
-                // note, note1, note2... の順を昇順に
-                if (a === 'note') return -1;
-                if (b === 'note') return 1;
-                return a.localeCompare(b, undefined, { numeric: true });
-              })
-              .forEach((k) => {
-                if (q[k]) notesHtml += `<div class=\"note-text\">・${q[k]}</div>`;
-              });
-
-            box.innerHTML = `<strong>${q.id}${isHidden ? "（参考）" : ""}</strong><br>${notesHtml}${body}`;
-            results.appendChild(box);
-          }
+          const isHidden = q.hidden === true;
+          const box = document.createElement("div");
+          box.innerHTML = createResultBox(q, keyword, ans, isHidden);
+          box.className = isHidden ? "result-box hidden-box" : "result-box";
+          results.appendChild(box);
         }
         return;
       }
 
       // 経穴IDの完全一致検索
+      // 経穴IDの完全一致検索（choices.jsonの内容＋noteも表示）
       for (const cat in answersData) {
         if (answersData[cat][keyword]) {
+          // choices.jsonの説明文（取穴部位詳細）
           const answer = Array.isArray(answersData[cat][keyword])
-            ? answersData[cat][keyword].join("<br>")
-            : answersData[cat][keyword];
-          results.innerHTML = `<div class="result-box">
-            <strong>${keyword}</strong><br>${answer}
-          </div>`;
+            ? `・${answersData[cat][keyword][0]}`
+            : `・${answersData[cat][keyword]}`;
+          // questions.jsonのnoteフィールド
+          let notesHtml = "";
+          for (const qcat in questionsData) {
+            questionsData[qcat].forEach(q => {
+              if (q.id === keyword) {
+                Object.keys(q)
+                  .filter(k => k.startsWith("note"))
+                  .sort((a, b) => {
+                    if (a === 'note') return -1;
+                    if (b === 'note') return 1;
+                    return a.localeCompare(b, undefined, { numeric: true });
+                  })
+                  .forEach(k => {
+                    if (q[k]) notesHtml += `<div class=\"note-text\">・${q[k]}</div>`;
+                  });
+              }
+            });
+          }
+          results.innerHTML = `<div class=\"result-box\">\n            <strong>${keyword}</strong><br>${notesHtml}${answer}\n          </div>`;
           return;
         }
       }
@@ -246,6 +274,7 @@
         return;
       }
       results.innerHTML = `<h2>${categoryName} の経穴一覧</h2>`;
+      const keyword = "";
       for (const q of list) {
         const box = document.createElement("div");
         const isHidden = q.hidden === true;
@@ -260,21 +289,26 @@
             return a.localeCompare(b, undefined, { numeric: true });
           })
           .forEach((k) => {
-            if (q[k]) notesHtml += `<div class=\"note-text\">・${q[k]}</div>`;
+            if (q[k]) notesHtml += `<div class=\"note-text\">・${highlightKeyword(q[k], keyword)}</div>`;
           });
-        // choices.jsonの説明文（取穴部位）
+        // description（経穴の説明）
         let descHtml = "";
+        if (q.description && q.description.trim()) {
+          descHtml = `<div class=\"desc-text\">・${highlightKeyword(q.description, keyword)}</div>`;
+        }
+        // choices.jsonの説明文（取穴部位）
         const ans = ansMap[q.id];
+        let ansHtml = "";
         if (ans) {
           if (Array.isArray(ans)) {
-            descHtml = ans.map(item => `・${item}`).join("<br>");
+            ansHtml = `・${highlightKeyword(ans[0], keyword)}`;
           } else {
-            descHtml = `・${ans}`;
+            ansHtml = `・${highlightKeyword(ans, keyword)}`;
           }
         } else {
-          descHtml = `<span style='color:gray;'>（データなし）</span>`;
+          ansHtml = `<span style='color:gray;'>（データなし）</span>`;
         }
-        box.innerHTML = `<strong>${q.id}${isHidden ? "（参考）" : ""}</strong><br>${notesHtml}${descHtml}`;
+        box.innerHTML = `<strong>${highlightKeyword(q.id, keyword)}${isHidden ? "（参考）" : ""}</strong><br>${notesHtml}${descHtml}${ansHtml}`;
         results.appendChild(box);
       }
     }

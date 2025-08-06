@@ -362,6 +362,8 @@
       const btn = document.createElement("button");
       btn.textContent = opt;
       btn.onclick = () => answer(opt);
+      // hover/active/selectedクラスを初期化（念のため）
+      btn.classList.remove("active", "hover", "selected");
       optionsDiv.appendChild(btn);
     }
 
