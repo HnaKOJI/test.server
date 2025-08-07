@@ -117,20 +117,28 @@
 
   // 質問・回答ファイルの読み込み
   async function loadFiles() {
-    const qRes = await fetch("questions.json");
-    const rawQuestions = await qRes.json();
+    // json/1.json～json/15.jsonをすべて読み込んで結合
+    const files = Array.from({length: 15}, (_, i) => `json/${i+1}.json`);
     questions = [];
-    for (const cat in rawQuestions) {
-      for (const q of rawQuestions[cat]) {
-        questions.push({ ...q, category: cat }); // カテゴリを保持
-      }
+    for (let i = 0; i < files.length; i++) {
+      try {
+        const res = await fetch(files[i]);
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          data.forEach(q => questions.push({ ...q, category: String(i+1) }));
+        } else if (typeof data === 'object') {
+          Object.values(data).forEach(arr => {
+            if (Array.isArray(arr)) arr.forEach(q => questions.push({ ...q, category: String(i+1) }));
+          });
+        }
+      } catch(e) { /* ファイルが無い場合は無視 */ }
     }
-    const aRes = await fetch("choices.json");
-    answers = await aRes.json();
+    // answersの初期化はloadAllFilesで行うためここでは不要
 
     // relatedPoints.jsonも読み込む
     try {
-      const rRes = await fetch("relatedPoints.json");
+      const rRes = await fetch("json/relatedPoints.json");
       relatedPoints = await rRes.json();
     } catch (e) {
       relatedPoints = {};
@@ -211,115 +219,56 @@
 
     // 誤答選択肢生成
     for (let q of filtered) {
-      let correctList = answers[q.category][q.id];
-      if (!Array.isArray(correctList)) correctList = [correctList];
-      // 正解の経穴名はidを使う
-      const correct = q.id;
-      let wrong = [];
-
-      // relatedPoints.jsonに正解idがあればそこから誤答を選ぶ（choices.jsonから説明文に変換）
-      let relatedWrong = [];
-      if (relatedPoints[correct] && Array.isArray(relatedPoints[correct])) {
-        for (const pt of relatedPoints[correct]) {
-          if (pt === correct) continue;
-          let found = false;
-          for (const cat in answers) {
-            if (cat !== "15" && choices[cat] && choices[cat][pt]) { // 奇穴カテゴリは除外
-              const desc = Array.isArray(choices[cat][pt]) ? choices[cat][pt][0] : choices[cat][pt];
-              relatedWrong.push(desc);
-              found = true;
-              break;
-            }
-          }
-        }
-      }
-      // relatedWrongが1以上4未満なら、不足分を奇穴以外からランダムで補う
-      if (relatedWrong.length > 0 && relatedWrong.length < 4) {
-        let pool = [];
-        // カテゴリごとの補充ルール
-        let supplementCats = [];
-        if (q.category === "1" || q.category === "2") {
-          // 督脈・任脈は確率で同カテゴリ:他カテゴリ=7:3で補充
-          let mainCat = q.category;
-          let subCat = q.category === "1" ? "2" : "1";
-          // 4択分の補充カテゴリ配列を作成
-          let catPool = [];
-          let mainCount = 3, subCount = 1;
-          // 30%の確率でsubCatを選ぶ位置をランダムに
-          if (Math.random() < 0.3) {
-            mainCount = 2;
-            subCount = 2;
-          }
-          for (let i = 0; i < mainCount; i++) catPool.push(mainCat);
-          for (let i = 0; i < subCount; i++) catPool.push(subCat);
-          shuffle(catPool);
-          supplementCats = catPool;
-        } else {
-          // その他は督脈・任脈・奇穴以外
-          supplementCats = Object.keys(answers).filter(cat => cat !== "1" && cat !== "2" && cat !== "15");
-        }
-        for (const cat of supplementCats) {
-          // 1カテゴリごとに1つだけ候補を追加（重複防止）
-          let ids = Object.keys(answers[cat]).filter(id => id !== q.id && (!relatedPoints[correct] || !relatedPoints[correct].includes(id)) && choices[cat] && choices[cat][id]);
-          shuffle(ids);
-          if (ids.length > 0) {
-            const desc = Array.isArray(choices[cat][ids[0]]) ? choices[cat][ids[0]][0] : choices[cat][ids[0]];
-            pool.push(desc);
-          }
-        }
-        shuffle(pool);
-        while (relatedWrong.length < 4 && pool.length > 0) {
-          relatedWrong.push(pool.pop());
-        }
-        wrong = relatedWrong;
-      } else if (relatedWrong.length >= 4) {
-        wrong = relatedWrong;
-      } else if (relatedWrong.length === 0) {
-        // relatedWrongが0ならカテゴリごとに補充ルール
-        wrong = [];
-        let supplementCats = [];
-        if (q.category === "1" || q.category === "2") {
-          // 督脈・任脈は確率で同カテゴリ:他カテゴリ=7:3で補充
-          let mainCat = q.category;
-          let subCat = q.category === "1" ? "2" : "1";
-          let catPool = [];
-          let mainCount = 3, subCount = 1;
-          if (Math.random() < 0.3) {
-            mainCount = 2;
-            subCount = 2;
-          }
-          for (let i = 0; i < mainCount; i++) catPool.push(mainCat);
-          for (let i = 0; i < subCount; i++) catPool.push(subCat);
-          shuffle(catPool);
-          supplementCats = catPool;
-        } else if (q.category === "15") {
-          // 奇穴は全カテゴリ
-          supplementCats = Object.keys(answers);
-        } else {
-          supplementCats = Object.keys(answers).filter(cat => cat !== "1" && cat !== "2" && cat !== "15");
-        }
-        for (const cat of supplementCats) {
-          // 1カテゴリごとに1つだけ候補を追加（重複防止）
-          let ids = Object.keys(answers[cat]).filter(id => id !== q.id && choices[cat] && choices[cat][id]);
-          shuffle(ids);
-          if (ids.length > 0) {
-            const desc = Array.isArray(choices[cat][ids[0]]) ? choices[cat][ids[0]][0] : choices[cat][ids[0]];
-            wrong.push(desc);
-          }
-        }
-      }
-
-      shuffle(wrong);
-      // 正解の説明文もchoices.jsonから取得
-      let correctDesc = null;
-      if (choices[q.category] && choices[q.category][q.id]) {
-        correctDesc = Array.isArray(choices[q.category][q.id]) ? choices[q.category][q.id][0] : choices[q.category][q.id];
+      // 問題文はchoices.jsonから取得
+      let questionText = "";
+      if (answers[q.category] && answers[q.category][q.id]) {
+        questionText = Array.isArray(answers[q.category][q.id]) ? answers[q.category][q.id][0] : answers[q.category][q.id];
       } else {
-        correctDesc = correctList[0];
+        questionText = q.id;
       }
-      const options = [correctDesc, ...wrong.slice(0, 3)];
+
+      // 選択肢は1~15.jsonのtextから取得
+      // 正解
+      let correctText = "";
+      if (Array.isArray(q.text)) {
+        correctText = q.text[0];
+      } else {
+        correctText = q.text;
+      }
+      // 誤答候補: 1.relatedPointsからのみ生成（全経穴から）、2.足りなければ全経穴からランダム
+      let wrong = [];
+      let usedIds = new Set([q.id]);
+      // 1. relatedPointsから全経穴データ(questions)から取得
+      if (relatedPoints[q.id] && Array.isArray(relatedPoints[q.id])) {
+        let relatedWrong = questions.filter(qq => relatedPoints[q.id].includes(qq.id) && qq.id !== q.id);
+        shuffle(relatedWrong);
+        for (let i = 0; i < relatedWrong.length && wrong.length < 3; i++) {
+          let w = relatedWrong[i];
+          usedIds.add(w.id);
+          if (Array.isArray(w.text)) {
+            wrong.push(w.text[0]);
+          } else {
+            wrong.push(w.text);
+          }
+        }
+      }
+      // 2. 関連経穴が3未満なら全経穴からランダムで補充
+      if (wrong.length < 3) {
+        let allOther = questions.filter(qq => !usedIds.has(qq.id));
+        shuffle(allOther);
+        for (let i = 0; i < allOther.length && wrong.length < 3; i++) {
+          let w = allOther[i];
+          usedIds.add(w.id);
+          if (Array.isArray(w.text)) {
+            wrong.push(w.text[0]);
+          } else {
+            wrong.push(w.text);
+          }
+        }
+      }
+      const options = [correctText, ...wrong.slice(0, 3)];
       shuffle(options);
-      quizData.push({ ...q, options, correct: [correctDesc] });
+      quizData.push({ ...q, options, correct: [correctText], questionText });
     }
 
     document.getElementById("result").innerText = "";
@@ -329,44 +278,28 @@
   
   // 問題と選択肢を表示
   function showQuestion() {
-
     // 1. 問題表示時にアクティブ要素のフォーカス解除
     if (document.activeElement) {
       document.activeElement.blur();
     }
-
     const q = quizData[currentIndex];
-
-    // 2. 問題文をランダムに1つ抽出（配列の場合のみ）
-    let questionText = "";
-    if (Array.isArray(q.text)) {
-      const idx = Math.floor(Math.random() * q.text.length);
-      questionText = q.text[idx];
-    } else {
-      questionText = q.text;
-    }
-
-    // 実際に使った問題文を保存（後で結果表示で使う）
+    // 2. 問題文はquestionText（choices.json由来）
+    let questionText = q.questionText || "";
     quizData[currentIndex].usedText = questionText;
-
     // 3. 進行状況と問題文を表示
     document.getElementById("question").style.display = "block";
     document.getElementById("options").style.display = "grid";
     document.getElementById("question").innerHTML = `<span style="font-weight:bold; font-size:1.25rem;">${currentIndex + 1}/${quizData.length}.</span> ${questionText}`;
-
     // 4. 選択肢を表示
     const optionsDiv = document.getElementById("options");
     optionsDiv.innerHTML = "";
-
     for (let opt of q.options) {
       const btn = document.createElement("button");
       btn.textContent = opt;
       btn.onclick = () => answer(opt);
-      // hover/active/selectedクラスを初期化（念のため）
       btn.classList.remove("active", "hover", "selected");
       optionsDiv.appendChild(btn);
     }
-
     // 5. ナビゲーションボタン表示
     document.getElementById("navButtons").style.display = "flex";
     document.getElementById("prevButton").style.display = currentIndex === 0 ? "none" : "inline-block";
@@ -464,14 +397,15 @@
   }
 
   // choices.jsonもグローバルで使えるように
-  let choices = {};
+let choices = {};
 
   // 初期化処理：データ読み込み実行
   async function loadAllFiles() {
     await loadFiles();
-    // choices.jsonもfetchしてグローバルに格納
-    const cRes = await fetch("choices.json");
+    // choices.jsonをfetchしてグローバルに格納し、answersにもセット
+    const cRes = await fetch("json/choices.json");
     choices = await cRes.json();
+    answers = choices;
   }
 
   loadAllFiles();
