@@ -54,6 +54,14 @@
         </ul>
       </div>
 
+      <!-- ラジオボタン -->
+
+      <!-- <div>
+        <input type="radio" checked>
+        <input type="radio">
+        <input type="radio">
+      </div> -->
+
       <!-- カテゴリボタンのコンテナ -->
       <div class="category" id="categoryButtons"></div>
     </div>
@@ -186,7 +194,6 @@
 
     currentCategory = category;
     document.getElementById("categoryPage").style.display = "none";
-    // document.getElementById("youketsuLinkContainer").style.display = "none";
     document.getElementById("quizPage").style.display = "block";
     quizData = [];
     userAnswers = [];
@@ -220,12 +227,7 @@
     // 誤答選択肢生成
     for (let q of filtered) {
       // 問題文はchoices.jsonから取得
-      let questionText = "";
-      if (answers[q.category] && answers[q.category][q.id]) {
-        questionText = Array.isArray(answers[q.category][q.id]) ? answers[q.category][q.id][0] : answers[q.category][q.id];
-      } else {
-        questionText = q.id;
-      }
+      let questionText = `${q.id}の取穴部位は?`;
 
       // 選択肢は1~15.jsonのtextから取得
       // 正解

@@ -116,6 +116,7 @@
     }
 
     async function doSearch(keyword) {
+
       await fetchData();
       const results = document.getElementById("results");
       results.innerHTML = "";
@@ -125,8 +126,22 @@
         return;
       }
 
+      // AND検索用にキーワードを空白で分割
+      let keywords = keyword.split(/\s+/).filter(Boolean);
+      // スペースが全く含まれない場合は、全角・半角スペースで分割できなければ1文字ずつ分割も追加
+      let altKeywords = [];
+      if (keywords.length === 1 && keyword.length > 1 && !/\s/.test(keyword)) {
+        // 例: "大腸経要穴" → ["大腸経", "要穴"] になるような分割は困難なので、2文字以上の部分一致も考慮
+        // まず2文字以上の部分一致を優先（例: "大腸経", "要穴"）
+        // ただし、現状は1文字ずつ分割でAND検索も追加
+        altKeywords = keyword.split("");
+      }
+
+      function getConcatFields(q) {
+        return getSearchFields(q).join("");
+      }
+
       // --- 経脈名検索時の特別表示（カテゴリ一覧＋部分一致note等） ---
-      // 経脈名リスト
       const meridianMap = {
         "督脈": "督脈",
         "任脈": "任脈",
@@ -161,14 +176,23 @@
           }
         }
         // 2. note等にキーワードを含む経穴を全カテゴリから抽出
-        // note/data/textをまとめて検索（descriptionは除外）
         const haystacksList = [];
         Object.values(questionsData).forEach(arr => {
           arr.forEach(q => {
             haystacksList.push({ q, fields: getSearchFields(q) });
           });
         });
-        const noteResults = haystacksList.filter(obj => obj.fields.some(f => f && f.includes(keyword)));
+        // AND検索: 全キーワードが含まれる or 連結キーワードが含まれるもの
+        const noteResults = haystacksList.filter(obj => {
+          const concat = obj.fields.join("");
+          // 1. 連結キーワードが含まれる
+          if (concat.includes(keyword)) return true;
+          // 2. 分割キーワードすべて含む
+          if (keywords.every(kw => concat.includes(kw))) return true;
+          // 3. スペースがない場合は1文字ずつANDも許容
+          if (altKeywords.length > 1 && altKeywords.every(kw => concat.includes(kw))) return true;
+          return false;
+        });
         // 3. カテゴリ一覧で既に表示済みの経穴IDを除外
         const uniqueResults = noteResults.filter(obj => !shownIds.has(obj.q.id));
         // 4. 重複しないnoteResultsのみ追加表示
@@ -185,9 +209,21 @@
       const resultSet = new Map();
       Object.keys(questionsData).forEach(cat => {
         questionsData[cat].forEach(q => {
-          const fields = getSearchFields(q);
-          if (fields.some(str => str && str.includes(keyword))) {
+          const concat = getConcatFields(q);
+          // 1. 連結キーワードが含まれる
+          if (concat.includes(keyword)) {
             resultSet.set(q.id, { q });
+            return;
+          }
+          // 2. 分割キーワードすべて含む
+          if (keywords.every(kw => concat.includes(kw))) {
+            resultSet.set(q.id, { q });
+            return;
+          }
+          // 3. スペースがない場合は1文字ずつANDも許容
+          if (altKeywords.length > 1 && altKeywords.every(kw => concat.includes(kw))) {
+            resultSet.set(q.id, { q });
+            return;
           }
         });
       });
